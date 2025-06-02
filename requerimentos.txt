@@ -1,0 +1,8 @@
+Para que este projeto funcione corretamente, é necessário ter o Python 3.8 ou superior instalado e as seguintes bibliotecas:
+
+networkx
+matplotlib
+
+Você pode instalá-las com o seguinte comando no terminal (cmd, PowerShell ou terminal do VS Code):
+
+pip install networkx matplotlib
