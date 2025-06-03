@@ -1,8 +1,8 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
+from PIL import Image, ImageTk
 import networkx as nx
 import matplotlib.pyplot as plt
-
 
 class NoFilme:
     def __init__(self, titulo, nota):
@@ -71,23 +71,55 @@ def mostrar_grafo_generos():
     plt.title("Grafo de Gêneros Relacionados")
     plt.show()
 
+imagens_capas = {
+    "John Wick": "capas/john_wick.jpg",
+    "Gladiador": "capas/gladiador.jpg",
+    "Mad Max": "capas/mad_max.jpg",
+    "Titanic": "capas/titanic.jpg",
+    "Forrest Gump": "capas/forrest_gump.jpg",
+    "Clube da Luta": "capas/clube_da_luta.jpg",
+    "Matrix": "capas/matrix.jpg",
+    "Interestelar": "capas/interestelar.jpg",
+    "A Origem": "capas/a_origem.jpg",
+    "La La Land": "capas/la_la_land.jpg",
+    "O Rei do Show": "capas/o_rei_do_show.jpg",
+    "Chicago": "capas/chicago.jpg",
+    "Seven": "capas/seven.jpg",
+    "Garota Exemplar": "capas/garota_exemplar.jpg",
+    "O Silêncio dos Inocentes": "capas/o_silencio_dos_inocentes.jpg",
+    "Orgulho e Preconceito": "capas/orgulho_e_preconceito.jpg",
+    "Simplesmente Amor": "capas/simplesmente_amor.jpg",
+    "Questão de Tempo": "capas/questao_de_tempo.jpg"
+}
+
 class AppFilmes:
     def __init__(self, master):
         self.janela = master
         self.janela.title("Pobreflix")
+        self.janela.geometry("900x700")
+        self.janela.configure(bg="#141414")
         self.nome_usuario = ""
+        self.imagens_cache = {}  
         self.tela_nome()
 
     def limpar_tela(self):
         for widget in self.janela.winfo_children():
             widget.destroy()
 
+    def criar_botao(self, texto, comando):
+        return tk.Button(self.janela, text=texto, font=("Helvetica", 11, "bold"),
+                         bg="#E50914", fg="white", activebackground="#B20710",
+                         relief="flat", padx=10, pady=6, command=comando)
+
     def tela_nome(self):
         self.limpar_tela()
-        ttk.Label(self.janela, text="Bem-vindo! Qual é o seu nome?").pack(pady=10)
-        self.entrada_nome = ttk.Entry(self.janela, width=30)
-        self.entrada_nome.pack(pady=5)
-        ttk.Button(self.janela, text="Continuar", command=self.salvar_nome_ir).pack(pady=10)
+        tk.Label(self.janela, text="Pobreflix", font=("Helvetica", 30, "bold"),
+                 fg="#E50914", bg="#141414").pack(pady=40)
+        tk.Label(self.janela, text="Qual é o seu nome?", font=("Helvetica", 16),
+                 fg="white", bg="#141414").pack(pady=10)
+        self.entrada_nome = tk.Entry(self.janela, font=("Helvetica", 14), width=30)
+        self.entrada_nome.pack(pady=10)
+        self.criar_botao("Continuar", self.salvar_nome_ir).pack(pady=20)
 
     def salvar_nome_ir(self):
         nome = self.entrada_nome.get().strip()
@@ -99,44 +131,72 @@ class AppFilmes:
 
     def mostrar_generos(self):
         self.limpar_tela()
-        ttk.Label(self.janela, text=f"Olá, {self.nome_usuario}! Escolha um gênero:").pack(pady=10)
+        tk.Label(self.janela, text=f"Olá, {self.nome_usuario}!",
+                 font=("Helvetica", 24, "bold"), fg="white", bg="#141414").pack(pady=20)
+        tk.Label(self.janela, text="Escolha um gênero:",
+                 font=("Helvetica", 18), fg="white", bg="#141414").pack(pady=10)
 
         for genero in biblioteca_filmes.keys():
-            ttk.Button(self.janela, text=genero, width=20,
-                       command=lambda g=genero: self.mostrar_catalogo(g)).pack(pady=5)
+            self.criar_botao(genero, lambda g=genero: self.mostrar_catalogo(g)).pack(pady=8)
 
-        ttk.Separator(self.janela, orient='horizontal').pack(fill='x', pady=10)
-        ttk.Button(self.janela, text="Mostrar Grafo de Gêneros", command=mostrar_grafo_generos).pack()
+        tk.Label(self.janela, text="", bg="#141414").pack(pady=10)
+        self.criar_botao("🎞 Ver grafo de gêneros", mostrar_grafo_generos).pack(pady=10)
 
     def mostrar_catalogo(self, genero):
         self.limpar_tela()
-        ttk.Label(self.janela, text=f"{self.nome_usuario}, aqui estão os filmes de {genero}:").pack(pady=10)
+        tk.Label(self.janela, text=f"Filmes de {genero}",
+                 font=("Helvetica", 24, "bold"), fg="white", bg="#141414").pack(pady=20)
 
         arvore = ArvoreFilmes()
         for titulo, nota in biblioteca_filmes[genero]:
             arvore.inserir(titulo, nota)
+
         filmes_ordenados = arvore.em_ordem_decrescente()
 
-        for filme, nota in filmes_ordenados:
-            quadro = ttk.Frame(self.janela, borderwidth=1, relief="solid", padding=10)
-            ttk.Label(quadro, text=f"{filme}", font=("Arial", 12, "bold")).pack(anchor="w")
-            ttk.Label(quadro, text=f"Nota: {nota}/10").pack(anchor="w")
-            quadro.pack(padx=10, pady=5, fill="x")
+        frame_cards = tk.Frame(self.janela, bg="#141414")
+        frame_cards.pack(fill="both", expand=True, padx=20)
 
-        generos_relacionados = obter_generos_relacionados(genero)
-        if generos_relacionados:
-            ttk.Label(self.janela, text="Também pode gostar de:").pack(pady=10)
-            for rel in generos_relacionados:
-                ttk.Button(self.janela, text=rel, width=20,
-                           command=lambda g=rel: self.mostrar_catalogo(g)).pack(pady=2)
+        colunas = 3
+        for i, (filme, nota) in enumerate(filmes_ordenados):
+            card = tk.Frame(frame_cards, bg="#222", bd=0, relief="flat", width=160, height=280)
+            card.grid(row=i//colunas, column=i%colunas, padx=15, pady=15)
+            card.pack_propagate(False)
 
-        ttk.Button(self.janela, text="Voltar aos Gêneros", command=self.mostrar_generos).pack(pady=10)
-        ttk.Button(self.janela, text="Sair", command=self.janela.quit).pack(pady=5)
+            caminho_imagem = imagens_capas.get(filme, None)
+            if caminho_imagem:
+                try:
+                    img = Image.open(caminho_imagem)
+                    img = img.resize((160, 220)) 
+                    foto = ImageTk.PhotoImage(img)
+                    label_img = tk.Label(card, image=foto, bg="#222")
+                    label_img.image = foto  
+                    label_img.pack()
+                except Exception as e:
+                    
+                    label_img = tk.Label(card, text="🎬", bg="#444", fg="white", font=("Helvetica", 48))
+                    label_img.pack(fill="both", expand=True)
+            else:
+                label_img = tk.Label(card, text="🎬", bg="#444", fg="white", font=("Helvetica", 48))
+                label_img.pack(fill="both", expand=True)
 
+            
+            titulo_label = tk.Label(card, text=filme, font=("Helvetica", 12, "bold"),
+                                    fg="white", bg="#222", wraplength=150, justify="center")
+            titulo_label.pack(pady=(5,0))
+            nota_label = tk.Label(card, text=f"Nota: {nota}/10", font=("Helvetica", 11),
+                                  fg="#ccc", bg="#222")
+            nota_label.pack()
+
+        relacionados = obter_generos_relacionados(genero)
+        if relacionados:
+            tk.Label(self.janela, text="Você também pode gostar de:",
+                     font=("Helvetica", 16), fg="white", bg="#141414").pack(pady=15)
+            for rel in relacionados:
+                self.criar_botao(rel, lambda g=rel: self.mostrar_catalogo(g)).pack(pady=5)
+
+        self.criar_botao("⬅ Voltar", self.mostrar_generos).pack(pady=25)
+        self.criar_botao("❌ Sair", self.janela.quit).pack()
 
 janela = tk.Tk()
-estilo = ttk.Style(janela)
-estilo.theme_use('clam')
-
 app = AppFilmes(janela)
 janela.mainloop()
